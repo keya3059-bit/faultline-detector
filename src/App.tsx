@@ -7,6 +7,7 @@ import { AnalyzerStudio } from './components/AnalyzerStudio';
 import { IssueTrackerView } from './components/IssueTrackerView';
 import { DuplicateMatrixView } from './components/DuplicateMatrixView';
 import { ModelsPipelineView } from './components/ModelsPipelineView';
+import { PythonBackendView } from './components/PythonBackendView';
 import type {
   BugAnalysisResult,
   BugStatus,
@@ -280,7 +281,7 @@ describe('handlePaymentIntentSucceeded Concurrency & Idempotency', () => {
 
 export default function App() {
   const [activeNav, setActiveNav] = useState<
-    'analyze' | 'tracker' | 'duplicates' | 'models'
+    'analyze' | 'tracker' | 'duplicates' | 'python' | 'models'
   >('analyze');
   const [bugs, setBugs] = useState<TrackedBug[]>([]);
   const [selectedBugId, setSelectedBugId] = useState<string | null>('BUG-1042');
@@ -492,6 +493,18 @@ export default function App() {
             Duplicate Matrix
           </a>
           <a
+            href="#python"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveNav('python');
+            }}
+            className={`transition-colors whitespace-nowrap hover:underline underline-offset-8 ${
+              activeNav === 'python' ? 'text-white underline' : 'hover:text-slate-200'
+            }`}
+          >
+            Python Backend
+          </a>
+          <a
             href="#models"
             onClick={(e) => {
               e.preventDefault();
@@ -536,6 +549,7 @@ export default function App() {
             { id: 'analyze', label: 'Analyze & Resolve' },
             { id: 'tracker', label: 'Issue Tracker' },
             { id: 'duplicates', label: 'Duplicate Matrix' },
+            { id: 'python', label: 'Python Backend' },
             { id: 'models', label: 'Model Pipeline' },
           ] as const
         ).map((tab) => (
@@ -564,6 +578,7 @@ export default function App() {
               {activeNav === 'analyze' && 'Defect Root Cause, Duplicate & Patch Studio'}
               {activeNav === 'tracker' && 'Engineering Issue Repository & Triage Ledger'}
               {activeNav === 'duplicates' && 'Semantic Vector & AST Duplicate Cluster Matrix'}
+              {activeNav === 'python' && 'Python 3 FastAPI, Native AST & Difflib Backend Service'}
               {activeNav === 'models' && 'Multi-Model Architecture & Live Embedding Sandbox'}
             </h1>
           </div>
@@ -632,6 +647,8 @@ export default function App() {
             }}
           />
         )}
+
+        {activeNav === 'python' && <PythonBackendView />}
 
         {activeNav === 'models' && <ModelsPipelineView />}
       </main>

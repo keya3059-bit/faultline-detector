@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import fs from 'fs';
+import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -20,6 +22,45 @@ import type {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Execute Python 3 Backend Engine (backend/bug_analyzer.py) via child_process
+function executePythonBackend(payload: Record<string, unknown>): Promise<Record<string, any>> {
+  return new Promise((resolve) => {
+    const scriptPath = path.join(__dirname, 'backend', 'bug_analyzer.py');
+    const py = spawn('python3', [scriptPath], {
+      env: { ...process.env },
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    py.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+    py.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    py.on('close', () => {
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        resolve(parsed);
+      } catch {
+        resolve({
+          status: 'fallback',
+          error: stderr || 'Python execution fallback',
+        });
+      }
+    });
+
+    py.on('error', (err) => {
+      resolve({ status: 'error', error: err.message });
+    });
+
+    py.stdin.write(JSON.stringify(payload));
+    py.stdin.end();
+  });
+}
 
 // Initialize server-side Gemini client per @google/genai guidelines
 function getGenAIClient(): GoogleGenAI | null {
@@ -632,6 +673,38 @@ async function startServer() {
       };
     });
     res.json({ bugs: trackedBugs });
+  });
+
+  // 3c. GET /api/python/status - Check live Python 3 runtime & read backend Python source files
+  app.get('/api/python/status', async (_req, res) => {
+    const runtimeStatus = await executePythonBackend({ action: 'status' });
+    let mainPy = '';
+    let analyzerPy = '';
+    let requirementsTxt = '';
+    try {
+      mainPy = fs.readFileSync(path.join(__dirname, 'backend', 'main.py'), 'utf-8');
+      analyzerPy = fs.readFileSync(path.join(__dirname, 'backend', 'bug_analyzer.py'), 'utf-8');
+      requirementsTxt = fs.readFileSync(path.join(__dirname, 'backend', 'requirements.txt'), 'utf-8');
+    } catch {
+      // ignore read errors
+    }
+    res.json({
+      runtime: runtimeStatus,
+      files: {
+        'backend/main.py': mainPy,
+        'backend/bug_analyzer.py': analyzerPy,
+        'backend/requirements.txt': requirementsTxt,
+      },
+    });
+  });
+
+  // 3d. POST /api/python/analyze - Run live Python 3 AST parser, difflib patch generator & HF classifier
+  app.post('/api/python/analyze', async (req, res) => {
+    const result = await executePythonBackend({
+      action: 'analyze',
+      ...req.body,
+    });
+    res.json(result);
   });
   app.get('/api/bugs/duplicates', (_req, res) => {
     const clusters: PairwiseDuplicateCluster[] = [];
