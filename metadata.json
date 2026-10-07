@@ -1,0 +1,6 @@
+{
+  "name": "FaultLine — AI Bug Detection & Resolution Assistant",
+  "description": "AI-powered bug management assistant using Hugging Face and advanced LLM models to detect duplicate issues, classify severity, identify root causes in source code, recommend patches, and generate structured bug reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
